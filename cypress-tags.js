@@ -3,8 +3,10 @@
 const { Parser } = require("gherkin");
 const glob = require("glob");
 const fs = require("fs");
+const path = require("path");
 const { execFileSync } = require("child_process");
 
+const { getSpecAndIgnoreGlobs } = require("./lib/cypress-tags-helpers");
 const { shouldProceedCurrentStep } = require("./lib/tagsHelper");
 
 const debug = (message, ...rest) =>
@@ -38,27 +40,10 @@ if (!envGlob) {
   try {
     // TODO : curently we don't allow the override of the cypress.json path
     // maybe we can set this path in the plugin conf (package.json : "cypressConf": "test/cypress.json")
-    // eslint-disable-next-line import/no-unresolved,global-require
-    const cypressConf = require("../../cypress.json");
-    const integrationFolder =
-      cypressConf && cypressConf.integrationFolder
-        ? cypressConf.integrationFolder.replace(/\/$/, "")
-        : "cypress/integration";
-
-    if (cypressConf && cypressConf.ignoreTestFiles) {
-      ignoreGlob = cypressConf.ignoreTestFiles;
-    }
-
-    if (cypressConf && cypressConf.testFiles) {
-      let testFiles = !Array.isArray(cypressConf.testFiles)
-        ? cypressConf.testFiles.split(",")
-        : cypressConf.testFiles;
-      testFiles = testFiles.map(pattern => `${integrationFolder}/${pattern}`);
-      specGlob =
-        testFiles.length > 1 ? `{${testFiles.join(",")}}` : testFiles[0];
-    } else {
-      specGlob = `${integrationFolder}/**/*.feature`;
-    }
+    const cypressConfPath = path.join(process.cwd(), "cypress.json");
+    // eslint-disable-next-line import/no-unresolved,global-require, import/no-dynamic-require
+    const cypressConf = require(cypressConfPath);
+    ({ specGlob, ignoreGlob } = getSpecAndIgnoreGlobs(cypressConf));
     console.log("Using cypress.json configuration:");
     console.log("Spec files: ", specGlob);
     if (ignoreGlob) console.log("Ignored files: ", ignoreGlob);
